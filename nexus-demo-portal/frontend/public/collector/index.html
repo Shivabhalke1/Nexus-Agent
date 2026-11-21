@@ -20,26 +20,26 @@
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
 </head>
-<body class="p-4 sm:p-6 lg:p-8">
-    <!-- Unified 3-Portal Switcher Bar (Single Link for all 3) -->
-    <div class="fixed top-0 left-0 right-0 z-40 bg-slate-900 text-white text-xs px-4 py-2 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2 shadow-md">
+<body class="p-4 sm:p-6 lg:p-8 pt-14">
+    <!-- Unified 3-Portal Switcher Bar -->
+    <div class="fixed top-0 left-0 right-0 z-50 bg-slate-900 text-white text-xs px-4 py-2 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2 shadow-md">
         <div class="flex items-center gap-2">
             <span class="font-extrabold text-cyan-400">NEXUS UNIFIED OBSERVABILITY:</span>
             <span class="text-slate-400 hidden sm:inline">Portal 2 of 3 (Local Privacy Guard)</span>
         </div>
         <div class="flex items-center gap-2 flex-wrap">
-            <a href="/" class="px-2.5 py-1 rounded-md text-[11px] font-bold bg-slate-800 hover:bg-indigo-600 text-slate-200 hover:text-white border border-slate-700 transition flex items-center gap-1">
+            <a href="https://nexus-agent-six.vercel.app/" class="px-2.5 py-1 rounded-md text-[11px] font-bold bg-slate-800 hover:bg-indigo-600 text-slate-200 hover:text-white border border-slate-700 transition flex items-center gap-1">
                 <span>🛍️</span> 1. Demo Store & Simulator
             </a>
-            <a href="/collector" class="px-2.5 py-1 rounded-md text-[11px] font-bold bg-cyan-600 text-white hover:bg-cyan-500 transition shadow-xs flex items-center gap-1">
+            <a href="/collector/" class="px-2.5 py-1 rounded-md text-[11px] font-bold bg-cyan-600 text-white hover:bg-cyan-500 transition shadow-xs flex items-center gap-1">
                 <span>🛡️</span> 2. Local Privacy Guard
             </a>
-            <a href="/saas" class="px-2.5 py-1 rounded-md text-[11px] font-bold bg-slate-800 hover:bg-indigo-700 text-slate-200 hover:text-white border border-slate-700 transition flex items-center gap-1">
+            <a href="/saas/" class="px-2.5 py-1 rounded-md text-[11px] font-bold bg-slate-800 hover:bg-indigo-700 text-slate-200 hover:text-white border border-slate-700 transition flex items-center gap-1">
                 <span>☁️</span> 3. Central SaaS Dashboard
             </a>
         </div>
     </div>
-    <div class="h-8"></div>
+
     <!-- Floating Notification Toast -->
     <div id="doneToast" class="fixed top-5 left-1/2 transform -translate-x-1/2 z-50 hidden transition-all duration-300">
         <div id="toastBox" class="px-5 py-3 rounded-2xl bg-emerald-600 text-white font-extrabold text-xs shadow-2xl flex items-center gap-2.5 border border-emerald-400">

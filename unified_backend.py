@@ -146,6 +146,16 @@ def health_check():
     }
 
 
+@app.get("/collector")
+def redirect_collector():
+    return Response(status_code=307, headers={"Location": "/collector/"})
+
+
+@app.get("/saas")
+def redirect_saas():
+    return Response(status_code=307, headers={"Location": "/saas/"})
+
+
 @app.api_route("/demo/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
 async def route_demo(path: str, request: Request):
     return await proxy_request(f"http://127.0.0.1:{DEMO_PORT}/{path}", request)
@@ -159,6 +169,22 @@ async def route_collector(path: str, request: Request):
 @app.api_route("/saas/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
 async def route_saas(path: str, request: Request):
     return await proxy_request(f"http://127.0.0.1:{SAAS_PORT}/{path}", request)
+
+
+# Direct API smart router for frontends calling /api/v1/...
+@app.api_route("/api/v1/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
+async def route_smart_api(path: str, request: Request):
+    referer = request.headers.get("referer", "")
+    
+    collector_endpoints = ("approval", "audit", "privacy", "killswitch", "adaptive", "redaction", "rule", "forward", "egress", "telemetry")
+    if "/collector" in referer or any(path.startswith(ep) for ep in collector_endpoints):
+        return await proxy_request(f"http://127.0.0.1:{COLLECTOR_PORT}/api/v1/{path}", request)
+    
+    demo_endpoints = ("products", "cart", "checkout", "orders", "simulate")
+    if "/demo" in referer or any(path.startswith(ep) for ep in demo_endpoints):
+        return await proxy_request(f"http://127.0.0.1:{DEMO_PORT}/api/v1/{path}", request)
+        
+    return await proxy_request(f"http://127.0.0.1:{SAAS_PORT}/api/v1/{path}", request)
 
 
 # Direct API shortcuts for compatibility

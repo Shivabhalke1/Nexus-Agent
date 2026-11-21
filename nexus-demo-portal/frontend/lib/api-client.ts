@@ -1,6 +1,6 @@
 // API Client for NEXUS Demo Portal Frontend
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" && window.location.hostname.includes("vercel.app") ? "https://nexus-observe-backend.onrender.com/api/v1" : "http://localhost:8000/api/v1");
 
 export interface ApiResponse<T = any> {
   success: boolean;

@@ -26,13 +26,13 @@ export default function Navbar() {
             <span>🛍️</span> 1. Demo Store & Simulator
           </Link>
           <a
-            href="/collector"
+            href="https://nexus-observe-backend.onrender.com/collector/"
             className="px-2.5 py-1 rounded-md text-[11px] font-bold bg-slate-800 hover:bg-cyan-700 text-slate-200 hover:text-white border border-slate-700 transition flex items-center gap-1"
           >
             <span>🛡️</span> 2. Local Privacy Guard
           </a>
           <a
-            href="/saas"
+            href="https://nexus-observe-backend.onrender.com/saas/"
             className="px-2.5 py-1 rounded-md text-[11px] font-bold bg-slate-800 hover:bg-indigo-700 text-slate-200 hover:text-white border border-slate-700 transition flex items-center gap-1"
           >
             <span>☁️</span> 3. Central SaaS Dashboard
