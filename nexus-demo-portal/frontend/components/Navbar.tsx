@@ -12,6 +12,34 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+      {/* Unified 3-Portal Switcher Bar (Single Link for all 3) */}
+      <div className="bg-slate-900 text-white text-xs px-4 py-2 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="font-extrabold text-cyan-400">NEXUS UNIFIED OBSERVABILITY:</span>
+          <span className="text-slate-400 hidden sm:inline">3 Portals / 1 Single Link</span>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Link
+            href="/"
+            className="px-2.5 py-1 rounded-md text-[11px] font-bold bg-indigo-600 text-white hover:bg-indigo-500 transition shadow-xs flex items-center gap-1"
+          >
+            <span>🛍️</span> 1. Demo Store & Simulator
+          </Link>
+          <a
+            href="/collector"
+            className="px-2.5 py-1 rounded-md text-[11px] font-bold bg-slate-800 hover:bg-cyan-700 text-slate-200 hover:text-white border border-slate-700 transition flex items-center gap-1"
+          >
+            <span>🛡️</span> 2. Local Privacy Guard
+          </a>
+          <a
+            href="/saas"
+            className="px-2.5 py-1 rounded-md text-[11px] font-bold bg-slate-800 hover:bg-indigo-700 text-slate-200 hover:text-white border border-slate-700 transition flex items-center gap-1"
+          >
+            <span>☁️</span> 3. Central SaaS Dashboard
+          </a>
+        </div>
+      </div>
+
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Brand */}
         <div className="flex items-center gap-6">

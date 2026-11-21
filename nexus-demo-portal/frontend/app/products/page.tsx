@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Search, Filter } from "lucide-react";
 import { apiRequest } from "@/lib/api-client";
 import { Product } from "@/lib/cart-context";
 import ProductCard from "@/components/ProductCard";
 
-export default function ProductsPage() {
+function ProductsContent() {
   const searchParams = useSearchParams();
   const initialCategory = searchParams.get("category") || "";
 
@@ -120,5 +120,13 @@ export default function ProductsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ProductsPage() {
+  return (
+    <Suspense fallback={<div className="container mx-auto px-4 py-16 text-center text-slate-400">Loading products catalog...</div>}>
+      <ProductsContent />
+    </Suspense>
   );
 }
