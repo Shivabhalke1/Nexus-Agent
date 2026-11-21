@@ -1,5 +1,0 @@
-{
-  "buildCommand": "cd nexus-demo-portal/frontend && npm install && npm run build",
-  "outputDirectory": "nexus-demo-portal/frontend/.next",
-  "framework": "nextjs"
-}
