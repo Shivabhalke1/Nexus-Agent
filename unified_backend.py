@@ -176,12 +176,23 @@ async def route_saas(path: str, request: Request):
 async def route_smart_api(path: str, request: Request):
     referer = request.headers.get("referer", "")
     
-    collector_endpoints = ("approval", "audit", "privacy", "killswitch", "adaptive", "redaction", "rule", "forward", "egress", "telemetry")
-    if "/collector" in referer or any(path.startswith(ep) for ep in collector_endpoints):
+    # 1. First check Referer to prioritize the originating UI
+    if "/saas" in referer:
+        return await proxy_request(f"http://127.0.0.1:{SAAS_PORT}/api/v1/{path}", request)
+    if "/collector" in referer:
+        return await proxy_request(f"http://127.0.0.1:{COLLECTOR_PORT}/api/v1/{path}", request)
+    if "/demo" in referer or ":3000" in referer or "vercel.app" in referer:
+        demo_endpoints = ("products", "cart", "checkout", "orders", "simulate")
+        if any(path.startswith(ep) for ep in demo_endpoints):
+            return await proxy_request(f"http://127.0.0.1:{DEMO_PORT}/api/v1/{path}", request)
+    
+    # 2. Path-based routing fallback
+    collector_endpoints = ("approval/", "pipeline", "lab", "privacy", "audit", "killswitch", "adaptive", "redaction", "egress")
+    if any(path.startswith(ep) for ep in collector_endpoints):
         return await proxy_request(f"http://127.0.0.1:{COLLECTOR_PORT}/api/v1/{path}", request)
     
     demo_endpoints = ("products", "cart", "checkout", "orders", "simulate")
-    if "/demo" in referer or any(path.startswith(ep) for ep in demo_endpoints):
+    if any(path.startswith(ep) for ep in demo_endpoints):
         return await proxy_request(f"http://127.0.0.1:{DEMO_PORT}/api/v1/{path}", request)
         
     return await proxy_request(f"http://127.0.0.1:{SAAS_PORT}/api/v1/{path}", request)
