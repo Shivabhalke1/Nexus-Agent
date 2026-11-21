@@ -1,0 +1,40 @@
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Python caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node & Next.js
+node_modules/
+.next/
+out/
+build/
+dist/
+.npm
+*.log
+
+# Databases & local state
+*.db
+*.sqlite
+*.sqlite3
+central_saas.db
+collector_approval.db
+
+# macOS artifacts & metadata
+._*
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Environment variables
+.env.local
+.env.*.local

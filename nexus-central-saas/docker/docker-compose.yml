@@ -1,0 +1,17 @@
+version: "3.8"
+
+services:
+  nexus-central-saas:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend
+    container_name: nexus-central-saas
+    ports:
+      - "8002:8002"
+    environment:
+      - ENVIRONMENT=production
+      - COLLECTOR_API_KEY=nexus-collector-auth-key-cicada-2026
+      - DATABASE_URL=sqlite:///./central_saas.db
+      - LOCAL_COLLECTOR_URL=http://nexus-local-collector:8001
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:3001,http://localhost:8000,http://localhost:8001,http://localhost:8002
+    restart: unless-stopped

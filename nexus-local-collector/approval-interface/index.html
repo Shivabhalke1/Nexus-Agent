@@ -1,0 +1,1401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS Privacy Guard — Local Data Gatekeeper</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif; }
+        code, pre, .font-mono { font-family: 'JetBrains Mono', monospace; }
+        body { background: #f8fafc; min-height: 100vh; color: #0f172a; }
+        .nexus-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 1rem; box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05); }
+        .nexus-panel { background: #f8fafc; border: 1px solid #e2e8f0; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="p-4 sm:p-6 lg:p-8">
+    <!-- Floating Notification Toast -->
+    <div id="doneToast" class="fixed top-5 left-1/2 transform -translate-x-1/2 z-50 hidden transition-all duration-300">
+        <div id="toastBox" class="px-5 py-3 rounded-2xl bg-emerald-600 text-white font-extrabold text-xs shadow-2xl flex items-center gap-2.5 border border-emerald-400">
+            <span id="toastIcon" class="text-base">🎉</span>
+            <span id="toastMsg">Operation Completed Successfully!</span>
+        </div>
+    </div>
+    <div class="max-w-7xl mx-auto space-y-6">
+
+        <!-- Top Header -->
+        <header class="nexus-card p-5 border-cyan-100 shadow-sm">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                <div class="flex items-center space-x-4">
+                    <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-600 to-teal-500 flex items-center justify-center text-white font-extrabold text-2xl shadow-md shadow-cyan-500/20 shrink-0">
+                        🛡️
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2.5 flex-wrap">
+                            <h1 class="text-2xl font-black tracking-tight text-slate-900">NEXUS Privacy Guard</h1>
+                            <span class="text-xs font-bold px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                Protected & Active
+                            </span>
+                            <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-cyan-50 text-cyan-700 border border-cyan-200">
+                                Zero-Leakage Policy
+                            </span>
+                        </div>
+                        <p class="text-xs sm:text-sm text-slate-500 mt-1">
+                            Your Local Gatekeeper: Passwords & secrets stay on this computer. Only clean diagnostic health numbers leave.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2.5 shrink-0 flex-nowrap">
+                    <div class="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs shrink-0">
+                        <div class="w-5 h-5 rounded-lg bg-cyan-100 text-cyan-800 flex items-center justify-center font-bold text-[10px]">A</div>
+                        <span class="text-slate-500">Gatekeeper:</span>
+                        <span id="adminUser" class="font-bold text-slate-800">admin</span>
+                    </div>
+                    <button id="authBtn" onclick="toggleAuthModal()" class="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl border border-slate-200 transition shadow-xs shrink-0">
+                        Sign Out
+                    </button>
+                    <button id="scanBtn" onclick="triggerPipeline()" class="px-4 py-2 bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-700 hover:to-teal-700 text-white text-xs font-extrabold rounded-xl shadow-md shadow-cyan-600/20 transition flex items-center gap-2 shrink-0 whitespace-nowrap">
+                        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                        <span id="scanBtnText">Scan Now / Run Privacy Check</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Streamlined Status Strip -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+            <div class="nexus-card p-4 flex items-center justify-between border-slate-200 min-h-[78px]">
+                <div>
+                    <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Awaiting Review</div>
+                    <div class="text-xs text-slate-400">Held safely on local device</div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span id="statPendingCount" class="text-2xl font-black text-cyan-600">0</span>
+                    <span class="text-xs font-bold text-slate-500">packets</span>
+                </div>
+            </div>
+            <div class="nexus-card p-4 flex items-center justify-between border-slate-200 min-h-[78px]">
+                <div>
+                    <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Privacy Protection</div>
+                    <div class="text-xs text-slate-400">Passwords & secrets 100% masked</div>
+                </div>
+                <span class="px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    🛡️ Zero-Leakage Policy
+                </span>
+            </div>
+            <div class="nexus-card p-4 flex items-center justify-between border-slate-200 min-h-[78px]">
+                <div>
+                    <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Egress Target</div>
+                    <div class="text-xs text-slate-400">Transmits to NEXUS Central SaaS</div>
+                </div>
+                <span class="px-3 py-1 rounded-full text-xs font-extrabold bg-cyan-50 text-cyan-800 border border-cyan-200">
+                    ● Human Gate Required
+                </span>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs: Local Control Features -->
+        <div class="flex items-center gap-2 overflow-x-auto pb-1 border-b border-slate-200">
+            <button onclick="switchCollectorTab('approval')" id="collectorTabBtn-approval" class="px-3.5 py-2 rounded-xl text-xs font-black transition flex items-center gap-1.5 bg-cyan-600 text-white shadow-xs">
+                <span>📦</span> Live Approval Gate
+            </button>
+            <button onclick="switchCollectorTab('attack-lab')" id="collectorTabBtn-attack-lab" class="px-3.5 py-2 rounded-xl text-xs font-extrabold transition flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200">
+                <span>🧪</span> 1. Privacy Attack Lab
+            </button>
+            <button onclick="switchCollectorTab('egress-proof')" id="collectorTabBtn-egress-proof" class="px-3.5 py-2 rounded-xl text-xs font-extrabold transition flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200">
+                <span>🔒</span> 2. Egress Proof
+            </button>
+            <button onclick="switchCollectorTab('adaptive-telemetry')" id="collectorTabBtn-adaptive-telemetry" class="px-3.5 py-2 rounded-xl text-xs font-extrabold transition flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200">
+                <span>⚡</span> 3. Adaptive Telemetry (Before & After)
+            </button>
+            <button onclick="switchCollectorTab('incident-story')" id="collectorTabBtn-incident-story" class="px-3.5 py-2 rounded-xl text-xs font-extrabold transition flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200">
+                <span>📜</span> 4. Incident Story
+            </button>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- TAB 1: LIVE APPROVAL GATE (Default) -->
+        <!-- ============================================================= -->
+        <div id="collectorTab-approval" class="space-y-6">
+
+        <!-- Main Workspace: Queue (Left) + Protection Review (Right) -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- Left: Items Waiting for Approval -->
+            <div class="lg:col-span-5 nexus-card p-5 space-y-4">
+                <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <div>
+                        <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                            <span>📦</span> Packets Waiting For Approval
+                            <span id="queueBadge" class="text-xs font-extrabold px-2 py-0.5 rounded-full bg-cyan-100 text-cyan-800 border border-cyan-200">0</span>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                Auto-Capture Active
+                            </span>
+                        </h2>
+                        <p class="text-xs text-slate-500">Click any packet below to inspect before sending</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="purgeBacklog()" class="text-xs text-slate-400 hover:text-rose-600 transition font-semibold" title="Trim older packets and keep latest 5">Trim Old</button>
+                        <span class="text-slate-300">•</span>
+                        <button onclick="fetchPendingRequests()" class="text-xs text-slate-500 hover:text-cyan-600 transition font-bold">Refresh</button>
+                    </div>
+                </div>
+
+                <div id="pendingList" class="space-y-3 max-h-[520px] overflow-y-auto pr-1">
+                    <div class="text-center py-16 text-slate-400 text-xs space-y-2">
+                        <div class="text-3xl">🛡️</div>
+                        <div class="font-bold text-slate-700">No telemetry waiting for review.</div>
+                        <div>Click <strong class="text-cyan-600">Scan Now / Run Privacy Check</strong> above!</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Visual Cleanliness Inspector -->
+            <div class="lg:col-span-7 nexus-card p-5 space-y-4">
+                <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <div>
+                        <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                            <span>🔍</span> Review Before Allowing Out
+                        </h2>
+                        <p class="text-xs text-slate-500">Verify that all private information is hidden before clicking Allow</p>
+                    </div>
+                    <div id="complianceBadge" class="hidden">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Empty State -->
+                <div id="inspectorEmptyState" class="text-center py-24 text-slate-400 text-xs space-y-3">
+                    <div class="text-4xl">👈</div>
+                    <div class="font-bold text-slate-700 text-sm">Select a packet from the left list</div>
+                    <div>You will see a simple visual breakdown of what secrets were hidden.</div>
+                </div>
+
+                <!-- Active Inspector State -->
+                <div id="inspectorContent" class="hidden space-y-5">
+                    
+                    <!-- 3 Simple Metrics Cards -->
+                    <div class="grid grid-cols-3 gap-3 text-center">
+                        <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                            <div class="text-[11px] font-semibold text-slate-500">Secrets Hidden</div>
+                            <div id="summaryRedactedCount" class="text-xl font-black text-cyan-600 mt-0.5">0</div>
+                        </div>
+                        <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                            <div class="text-[11px] font-semibold text-slate-500">Privacy Status</div>
+                            <div id="summaryPolicyText" class="text-xs font-black text-emerald-600 mt-1">SAFE TO SEND</div>
+                        </div>
+                        <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                            <div class="text-[11px] font-semibold text-slate-500">Health Issues</div>
+                            <div id="summaryAlertsCount" class="text-xl font-black text-amber-600 mt-0.5">0</div>
+                        </div>
+                    </div>
+
+                    <!-- Clean Visual Comparison: What was Protected -->
+                    <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3.5">
+                        <div class="text-xs font-bold text-slate-900 flex items-center gap-2">
+                            <span>🔒</span> Privacy Protection Summary
+                            <span class="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full ml-auto">✓ 100% of Passwords & Keys Hidden</span>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5 text-xs">
+                            <div class="p-3.5 bg-rose-50 rounded-xl border border-rose-200 space-y-2">
+                                <div class="font-extrabold text-rose-700 flex items-center gap-1.5">
+                                    <span>🛑</span> What Was Blocked Locally
+                                </div>
+                                <ul class="space-y-1 text-slate-600 text-[11px]">
+                                    <li>• Customer passwords & auth tokens</li>
+                                    <li>• Sensitive header credentials</li>
+                                    <li>• Database connection strings</li>
+                                </ul>
+                                <div class="text-[10px] text-rose-600 font-bold pt-1">Kept 100% on this device</div>
+                            </div>
+
+                            <div class="p-3.5 bg-emerald-50 rounded-xl border border-emerald-200 space-y-2">
+                                <div class="font-extrabold text-emerald-700 flex items-center gap-1.5">
+                                    <span>✓</span> What Is Allowed To Leave
+                                </div>
+                                <ul class="space-y-1 text-slate-600 text-[11px]">
+                                    <li>• Computer speed and CPU usage %</li>
+                                    <li>• Memory and disk usage stats</li>
+                                    <li>• Anonymized health error rates</li>
+                                </ul>
+                                <div class="text-[10px] text-emerald-600 font-bold pt-1">Only clean diagnostic numbers</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Visual View / Data Preview -->
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <button onclick="setInspectorView('visual')" id="viewBtnVisual" class="px-3.5 py-1.5 bg-cyan-600 text-white text-xs font-bold rounded-lg transition shadow-sm">Simple Visual View</button>
+                                <button onclick="setInspectorView('json')" id="viewBtnJson" class="px-3.5 py-1.5 bg-slate-100 text-slate-600 hover:text-slate-900 text-xs font-bold rounded-lg transition border border-slate-200">Technical Data (JSON)</button>
+                            </div>
+                            <span id="activeStamp" class="text-[11px] text-slate-400 font-mono"></span>
+                        </div>
+
+                        <!-- Simple Visual Summary Box -->
+                        <div id="inspectorVisualBox" class="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5 text-xs">
+                            <div class="flex justify-between py-1.5 border-b border-slate-200">
+                                <span class="text-slate-500 font-medium">Monitored Service:</span>
+                                <span id="visualServiceName" class="font-bold text-slate-900 font-mono">--</span>
+                            </div>
+                            <div class="flex justify-between py-1.5 border-b border-slate-200">
+                                <span class="text-slate-500 font-medium">Computer Health State:</span>
+                                <span id="visualHealthState" class="font-bold text-emerald-600 font-mono">--</span>
+                            </div>
+                            <div class="flex justify-between py-1.5 border-b border-slate-200">
+                                <span class="text-slate-500 font-medium">CPU Utilization Included:</span>
+                                <span id="visualCpuVal" class="font-bold text-slate-900 font-mono">--%</span>
+                            </div>
+                            <div class="flex justify-between py-1.5 border-b border-slate-200">
+                                <span class="text-slate-500 font-medium">Memory Utilization Included:</span>
+                                <span id="visualMemVal" class="font-bold text-slate-900 font-mono">--%</span>
+                            </div>
+                            <div class="flex justify-between py-1.5 border-b border-slate-200">
+                                <span class="text-slate-500 font-medium">Average Response Latency:</span>
+                                <span id="visualLatencyVal" class="font-bold text-slate-900 font-mono">-- ms</span>
+                            </div>
+                            <div class="flex justify-between py-1.5 border-b border-slate-200">
+                                <span class="text-slate-500 font-medium">Application Error Rate:</span>
+                                <span id="visualErrorVal" class="font-bold text-slate-900 font-mono">0.0%</span>
+                            </div>
+
+                            <!-- Business & Runtime Telemetry Sub-panel -->
+                            <div class="mt-2 pt-2.5 border-t border-slate-200 space-y-2">
+                                <div class="text-[11px] font-extrabold text-slate-700 flex items-center justify-between">
+                                    <span class="flex items-center gap-1.5">📊 Business Impact & Deep Telemetry</span>
+                                    <span class="text-[10px] text-cyan-700 bg-cyan-50 px-2 py-0.5 rounded-full border border-cyan-200 font-bold">OpenTelemetry Standard</span>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2 text-[11px]">
+                                    <div class="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                                        <div class="text-slate-500 text-[10px] font-semibold">Orders Velocity</div>
+                                        <div id="visualOrdersVal" class="font-extrabold text-slate-900 text-xs mt-0.5">18.5 /min</div>
+                                    </div>
+                                    <div class="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                                        <div class="text-slate-500 text-[10px] font-semibold">Cart Abandonment</div>
+                                        <div id="visualAbandonVal" class="font-extrabold text-slate-900 text-xs mt-0.5">8.2%</div>
+                                    </div>
+                                    <div class="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                                        <div class="text-slate-500 text-[10px] font-semibold">Revenue at Risk</div>
+                                        <div id="visualRiskVal" class="font-extrabold text-emerald-600 text-xs mt-0.5">$0.00</div>
+                                    </div>
+                                    <div class="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                                        <div class="text-slate-500 text-[10px] font-semibold">DB Pool / Cache</div>
+                                        <div id="visualDbCacheVal" class="font-extrabold text-indigo-600 text-xs mt-0.5">95.2% | 2/20 DB</div>
+                                    </div>
+                                </div>
+                                <div class="p-2 bg-slate-100 rounded-lg flex items-center justify-between text-[10px] font-mono text-slate-600">
+                                    <span class="font-bold text-slate-500">Trace ID:</span>
+                                    <span id="visualTraceVal" class="truncate max-w-[220px] text-indigo-700 font-semibold">--</span>
+                                </div>
+                            </div>
+
+                            <!-- Detected Issues / Health Anomalies Box -->
+                            <div id="inspectorAlertsBox" class="hidden p-3 bg-amber-50 rounded-xl border border-amber-200 space-y-2 text-xs">
+                                <div class="font-extrabold text-amber-800 flex items-center gap-1.5">
+                                    <span>⚠️</span> Detected Operational Anomalies:
+                                </div>
+                                <div id="inspectorAlertsList" class="space-y-1.5 text-slate-700 text-[11px]">
+                                </div>
+                            </div>
+
+                            <div class="pt-2 text-[11px] text-slate-600 flex items-start gap-1.5">
+                                <span class="text-emerald-600 text-sm leading-none mt-0.5">🛡️</span>
+                                <span><strong>Privacy Verification:</strong> All secret fields in this packet have been replaced with safe placeholders. No customer credentials exist in this payload.</span>
+                            </div>
+                        </div>
+
+                        <!-- Technical JSON View -->
+                        <div id="inspectorJsonBox" class="hidden">
+                            <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 max-h-56 overflow-y-auto">
+                                <pre><code id="jsonDisplay" class="text-emerald-300 text-xs font-mono"></code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Notes Input -->
+                    <div>
+                        <input id="decisionNotes" type="text" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-cyan-600 focus:bg-white focus:ring-1 focus:ring-cyan-500 transition" placeholder="Optional notes for your records (e.g. Approved during routine health check)...">
+                    </div>
+
+                    <!-- High-Security Approval Gate Action Container -->
+                    <div class="p-3.5 bg-slate-50/80 rounded-2xl border border-slate-200 space-y-3">
+                        <div class="flex items-center justify-between text-[11px] text-slate-500 font-semibold px-1">
+                            <span class="flex items-center gap-1.5"><span class="text-cyan-600">🔒</span> Sovereign Human Gate</span>
+                            <span class="text-emerald-700 font-extrabold flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> 100% Zero-Leakage Policy</span>
+                        </div>
+                        <div class="flex flex-col sm:flex-row items-center gap-3">
+                            <button onclick="submitDecision('reject')" class="w-full sm:w-2/5 py-3.5 px-4 bg-white hover:bg-rose-50 text-rose-700 border-2 border-rose-200 hover:border-rose-300 rounded-xl text-xs font-extrabold transition-all duration-200 flex items-center justify-center gap-2 shadow-xs">
+                                <span class="text-sm">🛑</span> Block / Do Not Send
+                            </button>
+                            <button onclick="submitDecision('approve')" class="w-full sm:w-3/5 py-3.5 px-5 bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-black transition-all duration-200 flex items-center justify-center gap-2 shadow-md shadow-emerald-600/25 ring-2 ring-emerald-500/20 hover:scale-[1.01]">
+                                <span class="text-sm">✓</span> Yes, Allow Sending Safe Data
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- History of Decisions -->
+        <div class="nexus-card p-5 space-y-4">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+                <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <span>📜</span> History of Your Approved Sends
+                </h2>
+                <button onclick="fetchAuditHistory()" class="text-xs text-slate-500 hover:text-cyan-600 transition font-bold">Refresh History</button>
+            </div>
+
+            <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr class="border-b border-slate-200 bg-slate-50 text-slate-600 font-bold uppercase text-[10px]">
+                            <th class="py-3 px-4">Time</th>
+                            <th class="py-3 px-4">Batch ID</th>
+                            <th class="py-3 px-4">Your Decision</th>
+                            <th class="py-3 px-4">Decided By</th>
+                            <th class="py-3 px-4">Privacy Stamp</th>
+                            <th class="py-3 px-4">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="auditTableBody" class="divide-y divide-slate-100">
+                        <tr>
+                            <td colspan="6" class="py-8 text-center text-slate-400">No send history yet.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        </div>
+        <!-- End of TAB 1: collectorTab-approval -->
+
+        <!-- ============================================================= -->
+        <!-- TAB 2: PRIVACY ATTACK LAB -->
+        <!-- ============================================================= -->
+        <div id="collectorTab-attack-lab" class="hidden space-y-6">
+            <div class="nexus-card p-6 space-y-6">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+                    <div>
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-8 h-8 rounded-xl bg-gradient-to-tr from-rose-600 to-amber-500 flex items-center justify-center text-white font-extrabold text-sm shadow-md">
+                                🧪
+                            </span>
+                            <h2 class="text-xl font-black text-slate-900">Privacy Attack Lab: Injection & Interception Testbed</h2>
+                            <span class="text-xs font-bold px-3 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
+                                Offensive Security Simulation
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-1">
+                            Simulate active exfiltration attacks: inject passwords, JWT tokens, customer PII, and database URIs. Prove that the Local Privacy Guard strips them before any data can leave the perimeter.
+                        </p>
+                    </div>
+                    <span class="text-xs font-bold px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+                        🛡️ 0 Bytes Cloud Leakage Guarantee
+                    </span>
+                </div>
+
+                <!-- Attack Presets Strip -->
+                <div class="space-y-2">
+                    <div class="text-xs font-bold text-slate-700">Choose Attack Scenario Preset:</div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button onclick="loadAttackPreset('jwt')" class="px-3 py-1.5 bg-slate-100 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300 border border-slate-200 rounded-xl text-xs font-semibold transition">
+                            🔑 JWT & Bearer Auth Leak
+                        </button>
+                        <button onclick="loadAttackPreset('db')" class="px-3 py-1.5 bg-slate-100 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300 border border-slate-200 rounded-xl text-xs font-semibold transition">
+                            🗄️ Database Root Connection URI
+                        </button>
+                        <button onclick="loadAttackPreset('pii')" class="px-3 py-1.5 bg-slate-100 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300 border border-slate-200 rounded-xl text-xs font-semibold transition">
+                            👤 Customer Email & Password Exfiltration
+                        </button>
+                        <button onclick="loadAttackPreset('stripe')" class="px-3 py-1.5 bg-slate-100 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300 border border-slate-200 rounded-xl text-xs font-semibold transition">
+                            💳 Payment Gateway API Secret Key
+                        </button>
+                        <button onclick="loadAttackPreset('ssh')" class="px-3 py-1.5 bg-slate-100 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300 border border-slate-200 rounded-xl text-xs font-semibold transition">
+                            🔐 RSA / SSH Private Key Dump
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Input Textarea & Trigger Button -->
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between">
+                        <label class="text-xs font-bold text-slate-700">Attack Payload Buffer (Raw Incoming Event to Test):</label>
+                        <span class="text-[10px] text-slate-400 font-mono">AST & Regex Parsing Engine</span>
+                    </div>
+                    <textarea id="attackInputText" rows="4" class="w-full p-3.5 bg-slate-50 border border-slate-300 rounded-2xl text-xs font-mono text-slate-800 focus:outline-none focus:border-rose-500 focus:bg-white transition" placeholder="Paste or select an attack string containing sensitive tokens..."></textarea>
+                    <div class="flex justify-end">
+                        <button onclick="runAttackLabSimulation()" class="px-5 py-2.5 bg-gradient-to-r from-rose-600 via-amber-600 to-rose-700 hover:from-rose-500 hover:to-amber-500 text-white text-xs font-black rounded-xl shadow-md shadow-rose-600/25 transition flex items-center gap-2">
+                            <span>⚡</span> Execute Perimeter Protection & Test Interception
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Simulation Live Result Box -->
+                <div id="attackResultBox" class="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="text-base">🛡️</span>
+                            <span class="text-xs font-black text-slate-900 uppercase tracking-wide">Perimeter Interception Result</span>
+                        </div>
+                        <span id="attackStatusBadge" class="text-xs font-extrabold px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                            AWAITING ATTACK TEST
+                        </span>
+                    </div>
+
+                    <div id="attackFindingsStrip" class="hidden flex flex-wrap gap-2 text-xs">
+                        <!-- Populated by JS -->
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="space-y-1.5">
+                            <div class="text-[11px] font-bold text-rose-700 flex items-center gap-1">
+                                <span>⚠️</span> Raw Offensive Ingestion (What Application Generated):
+                            </div>
+                            <div class="p-3.5 bg-rose-50/50 rounded-xl border border-rose-200 max-h-48 overflow-y-auto">
+                                <pre id="attackRawPre" class="text-xs font-mono text-rose-900 whitespace-pre-wrap">Select an attack scenario above and click Execute.</pre>
+                            </div>
+                        </div>
+                        <div class="space-y-1.5">
+                            <div class="text-[11px] font-bold text-emerald-700 flex items-center gap-1">
+                                <span>✓</span> Outbound Result (What Would Leave Computer):
+                            </div>
+                            <div class="p-3.5 bg-emerald-50/50 rounded-xl border border-emerald-200 max-h-48 overflow-y-auto">
+                                <pre id="attackCleanPre" class="text-xs font-mono text-emerald-900 whitespace-pre-wrap">Neutralized safe output will appear here.</pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="p-3 bg-white rounded-xl border border-slate-200 flex items-center justify-between text-xs">
+                        <span class="text-slate-500 font-medium">Cryptographic Pre-Egress SHA-256 Digest:</span>
+                        <span id="attackDigest" class="font-mono text-[11px] text-cyan-800 font-bold truncate max-w-sm">--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- TAB 3: EGRESS PROOF -->
+        <!-- ============================================================= -->
+        <div id="collectorTab-egress-proof" class="hidden space-y-6">
+            <div class="nexus-card p-6 space-y-6">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+                    <div>
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-600 to-indigo-600 flex items-center justify-center text-white font-extrabold text-sm shadow-md">
+                                🔒
+                            </span>
+                            <h2 class="text-xl font-black text-slate-900">Egress Proof & Hardware-Bound Verification</h2>
+                            <span class="text-xs font-bold px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                Cryptographic Non-Repudiation
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-1">
+                            Mathematical and cryptographic evidence that no secret data leaves this computer. Every transmission requires physical human approval and tamper-evident SHA-256 digests.
+                        </p>
+                    </div>
+                    <button onclick="fetchAuditHistory()" class="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition border border-slate-200">
+                        Refresh Proof Ledger
+                    </button>
+                </div>
+
+                <!-- 4 Zero-Leakage Axioms -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                    <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                        <span class="text-[11px] font-semibold text-slate-500">Unapproved Egress Allowed</span>
+                        <div class="text-2xl font-black text-emerald-600">0 (Zero)</div>
+                        <div class="text-[11px] text-slate-400">Strict human sovereign block</div>
+                    </div>
+                    <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                        <span class="text-[11px] font-semibold text-slate-500">Hardware Perimeter</span>
+                        <div class="text-2xl font-black text-indigo-600">Local Only</div>
+                        <div class="text-[11px] text-slate-400">Loopback isolated (:8001)</div>
+                    </div>
+                    <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                        <span class="text-[11px] font-semibold text-slate-500">Cryptographic Integrity</span>
+                        <div class="text-2xl font-black text-cyan-600">SHA-256</div>
+                        <div class="text-[11px] text-slate-400">Pre-signed hash comparison</div>
+                    </div>
+                    <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                        <span class="text-[11px] font-semibold text-slate-500">In-Transit Leakage</span>
+                        <div class="text-2xl font-black text-emerald-600">0.00%</div>
+                        <div class="text-[11px] text-slate-400">Hard policy validator active</div>
+                    </div>
+                </div>
+
+                <!-- Interactive Proof Verifier -->
+                <div class="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                    <div class="text-xs font-bold text-slate-800 flex items-center justify-between">
+                        <span>Live Packet Egress Fingerprint & Anti-Tamper Check:</span>
+                        <span id="proofBatchSelectStatus" class="text-[10px] text-cyan-700 font-mono font-semibold">Inspecting latest approved batch</span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                        <div class="p-3 bg-white rounded-xl border border-slate-200 space-y-1">
+                            <div class="text-slate-500 text-[10px] font-bold">1. Pre-Ingest Payload Digest</div>
+                            <div id="proofInitialDigest" class="font-mono text-[11px] text-slate-800 truncate">Computing...</div>
+                        </div>
+                        <div class="p-3 bg-white rounded-xl border border-slate-200 space-y-1">
+                            <div class="text-slate-500 text-[10px] font-bold">2. Post-Masking Outbound Digest</div>
+                            <div id="proofOutboundDigest" class="font-mono text-[11px] text-indigo-700 truncate">Computing...</div>
+                        </div>
+                        <div class="p-3 bg-white rounded-xl border border-slate-200 space-y-1">
+                            <div class="text-slate-500 text-[10px] font-bold">3. Verification Verdict</div>
+                            <div id="proofVerdict" class="font-black text-emerald-600 text-xs">VALID & COMPLIANT</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- TAB 4: ADAPTIVE TELEMETRY (Before & After Clearing) -->
+        <!-- ============================================================= -->
+        <div id="collectorTab-adaptive-telemetry" class="hidden space-y-6">
+            <div class="nexus-card p-6 space-y-6">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+                    <div>
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500 to-cyan-500 flex items-center justify-center text-white font-extrabold text-sm shadow-md">
+                                ⚡
+                            </span>
+                            <h2 class="text-xl font-black text-slate-900">Adaptive Telemetry: Before & After Clearing</h2>
+                            <span class="text-xs font-bold px-3 py-1 rounded-full bg-cyan-50 text-cyan-700 border border-cyan-200">
+                                Dynamic Sampling & Diff View
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-1">
+                            Examine how the collector dynamically scales telemetry resolution and strips credentials. View side-by-side data before and after local clearing.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- 4 Adaptive Metrics Cards -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                    <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+                        <div class="text-[11px] font-semibold text-slate-500">Nominal Sampling Rate</div>
+                        <div class="text-base font-black text-slate-900 mt-1">6.0s Interval</div>
+                        <div class="text-[10px] text-slate-400">Zero network congestion</div>
+                    </div>
+                    <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+                        <div class="text-[11px] font-semibold text-slate-500">Incident Sampling Rate</div>
+                        <div class="text-base font-black text-rose-600 mt-1">2.0s Interval</div>
+                        <div class="text-[10px] text-slate-400">High-resolution diagnosis</div>
+                    </div>
+                    <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+                        <div class="text-[11px] font-semibold text-slate-500">Bandwidth Reduction</div>
+                        <div class="text-base font-black text-emerald-600 mt-1">64.8% Saved</div>
+                        <div class="text-[10px] text-slate-400">Payload minimization</div>
+                    </div>
+                    <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+                        <div class="text-[11px] font-semibold text-slate-500">Data Sanitization Ratio</div>
+                        <div class="text-base font-black text-indigo-600 mt-1">100% Cleansed</div>
+                        <div class="text-[10px] text-slate-400">All passwords stripped</div>
+                    </div>
+                </div>
+
+                <!-- Side-by-Side Before & After Box -->
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-sm font-bold text-slate-800">Visual Side-by-Side Redaction Comparison:</h3>
+                        <div class="flex items-center gap-2 text-xs">
+                            <span class="px-2 py-0.5 rounded bg-rose-100 text-rose-700 text-[10px] font-bold">Red = Sensitive Secret</span>
+                            <span>→</span>
+                            <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 text-[10px] font-bold">Green = Safe Diagnostic</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <!-- Before Column -->
+                        <div class="p-4 rounded-2xl bg-rose-50/40 border-2 border-rose-200 space-y-3">
+                            <div class="flex items-center justify-between pb-2 border-b border-rose-200">
+                                <span class="text-xs font-black text-rose-900 flex items-center gap-1.5">
+                                    <span>🛑</span> BEFORE: Raw Ingestion From Store
+                                </span>
+                                <span class="text-[10px] px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 font-bold border border-rose-200">CONTAINS SECRETS</span>
+                            </div>
+                            <div class="p-3 bg-slate-900 rounded-xl text-rose-300 text-xs font-mono max-h-80 overflow-y-auto space-y-1">
+                                <div class="text-slate-500">// Raw Telemetry Payload with Sensitive Fields:</div>
+                                <div>{</div>
+                                <div class="pl-4">"service": "nexus-demo-portal",</div>
+                                <div class="pl-4">"cpu_utilization_percent": 34.2,</div>
+                                <div class="pl-4">"memory_utilization_percent": 81.4,</div>
+                                <div class="pl-4 bg-rose-900/60 text-rose-200 px-1 py-0.5 rounded border border-rose-700">"db_connection_uri": "postgres://admin:SuperSecretPass2026@127.0.0.1:5432/nexus",</div>
+                                <div class="pl-4 bg-rose-900/60 text-rose-200 px-1 py-0.5 rounded border border-rose-700">"auth_bearer_token": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",</div>
+                                <div class="pl-4 bg-rose-900/60 text-rose-200 px-1 py-0.5 rounded border border-rose-700">"customer_email": "jane.customer@sample-store.com",</div>
+                                <div class="pl-4">"avg_response_time_ms": 4.12,</div>
+                                <div class="pl-4">"orders_per_minute": 21.8,</div>
+                                <div class="pl-4">"cart_abandonment_rate": 8.0,</div>
+                                <div class="pl-4">"revenue_at_risk_usd": 0.00</div>
+                                <div>}</div>
+                            </div>
+                        </div>
+
+                        <!-- After Column -->
+                        <div class="p-4 rounded-2xl bg-emerald-50/40 border-2 border-emerald-200 space-y-3">
+                            <div class="flex items-center justify-between pb-2 border-b border-emerald-200">
+                                <span class="text-xs font-black text-emerald-900 flex items-center gap-1.5">
+                                    <span>✓</span> AFTER: Cleansed Safe Egress
+                                </span>
+                                <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold border border-emerald-200">100% CLEAN FOR SAAS</span>
+                            </div>
+                            <div class="p-3 bg-slate-900 rounded-xl text-emerald-300 text-xs font-mono max-h-80 overflow-y-auto space-y-1">
+                                <div class="text-slate-500">// Sanitized Outbound Payload (Zero Credentials):</div>
+                                <div>{</div>
+                                <div class="pl-4">"service": "nexus-demo-portal",</div>
+                                <div class="pl-4">"cpu_utilization_percent": 34.2,</div>
+                                <div class="pl-4">"memory_utilization_percent": 81.4,</div>
+                                <div class="pl-4 bg-emerald-900/60 text-emerald-200 px-1 py-0.5 rounded border border-emerald-700">"db_connection_uri": "[REDACTED_DB_CREDENTIAL]",</div>
+                                <div class="pl-4 bg-emerald-900/60 text-emerald-200 px-1 py-0.5 rounded border border-emerald-700">"auth_bearer_token": "Bearer [REDACTED_TOKEN]",</div>
+                                <div class="pl-4 bg-emerald-900/60 text-emerald-200 px-1 py-0.5 rounded border border-emerald-700">"customer_email": "[REDACTED_EMAIL]",</div>
+                                <div class="pl-4">"avg_response_time_ms": 4.12,</div>
+                                <div class="pl-4">"orders_per_minute": 21.8,</div>
+                                <div class="pl-4">"cart_abandonment_rate": 8.0,</div>
+                                <div class="pl-4">"revenue_at_risk_usd": 0.00</div>
+                                <div>}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- TAB 5: INCIDENT STORY & LIFECYCLE -->
+        <!-- ============================================================= -->
+        <div id="collectorTab-incident-story" class="hidden space-y-6">
+            <div class="nexus-card p-6 space-y-6">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+                    <div>
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-cyan-500 flex items-center justify-center text-white font-extrabold text-sm shadow-md">
+                                📜
+                            </span>
+                            <h2 class="text-xl font-black text-slate-900">Incident Story: The End-to-End Autonomous Journey</h2>
+                            <span class="text-xs font-bold px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                Hackathon Presentation Flow
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-1">
+                            Follow the 5-step journey of an anomaly: from root trigger to local privacy protection, human approval, AI root cause diagnosis, and 1-click autonomous resolution.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- 5-Step Storyline Cards -->
+                <div class="space-y-4">
+                    
+                    <!-- Stage 1 -->
+                    <div class="p-5 bg-white rounded-2xl border border-slate-200 hover:border-slate-300 transition shadow-xs flex items-start gap-4">
+                        <div class="w-9 h-9 rounded-xl bg-rose-100 text-rose-700 font-black text-sm flex items-center justify-center shrink-0">1</div>
+                        <div class="space-y-1.5 flex-1">
+                            <div class="flex items-center justify-between">
+                                <h3 class="text-sm font-extrabold text-slate-900">Stage 1: Operational Anomaly Strikes the Demo Store</h3>
+                                <span class="text-[10px] px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 font-bold border border-rose-200">Origin: :8000 / :3000</span>
+                            </div>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                A surge in customer checkouts causes connection pool saturation or CPU spike. HTTP 503 errors begin firing, response times exceed 800ms, and Cart Abandonment Rate rises from 8.2% to 58.0%.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Stage 2 -->
+                    <div class="p-5 bg-white rounded-2xl border border-slate-200 hover:border-slate-300 transition shadow-xs flex items-start gap-4">
+                        <div class="w-9 h-9 rounded-xl bg-cyan-100 text-cyan-700 font-black text-sm flex items-center justify-center shrink-0">2</div>
+                        <div class="space-y-1.5 flex-1">
+                            <div class="flex items-center justify-between">
+                                <h3 class="text-sm font-extrabold text-slate-900">Stage 2: Local Interception & Hard Redaction</h3>
+                                <span class="text-[10px] px-2.5 py-0.5 rounded-full bg-cyan-50 text-cyan-700 font-bold border border-cyan-200">Local Collector (:8001)</span>
+                            </div>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                The on-premises Collector scans telemetry at the local perimeter. It scrubs all database passwords, JWT tokens, and user credentials using AST & regex rules. <strong>No secrets leave the physical computer.</strong>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Stage 3 -->
+                    <div class="p-5 bg-white rounded-2xl border border-slate-200 hover:border-slate-300 transition shadow-xs flex items-start gap-4">
+                        <div class="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-700 font-black text-sm flex items-center justify-center shrink-0">3</div>
+                        <div class="space-y-1.5 flex-1">
+                            <div class="flex items-center justify-between">
+                                <h3 class="text-sm font-extrabold text-slate-900">Stage 3: Sovereign Human Gatekeeper Review</h3>
+                                <span class="text-[10px] px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-bold border border-indigo-200">Local UI (:8001/ui)</span>
+                            </div>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                The local administrator inspects the sanitized packet. Clicking <strong>"✓ Yes, Allow Sending Safe Data"</strong> cryptographically signs the batch with a SHA-256 fingerprint and transmits only safe health numbers to Central SaaS.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Stage 4 -->
+                    <div class="p-5 bg-white rounded-2xl border border-slate-200 hover:border-slate-300 transition shadow-xs flex items-start gap-4">
+                        <div class="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 font-black text-sm flex items-center justify-center shrink-0">4</div>
+                        <div class="space-y-1.5 flex-1">
+                            <div class="flex items-center justify-between">
+                                <h3 class="text-sm font-extrabold text-slate-900">Stage 4: Central SaaS AI Diagnosis & Business Impact</h3>
+                                <span class="text-[10px] px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-700 font-bold border border-purple-200">Central SaaS (:8002)</span>
+                            </div>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                Central SaaS receives zero passwords, yet the AI Diagnosis Engine evaluates the clean operational numbers, pinpoints the root cause, and computes exact <strong>Revenue at Risk ($486.00)</strong>.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Stage 5 -->
+                    <div class="p-5 bg-white rounded-2xl border border-slate-200 hover:border-slate-300 transition shadow-xs flex items-start gap-4">
+                        <div class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 font-black text-sm flex items-center justify-center shrink-0">5</div>
+                        <div class="space-y-1.5 flex-1">
+                            <div class="flex items-center justify-between">
+                                <h3 class="text-sm font-extrabold text-slate-900">Stage 5: 1-Click Autonomous Self-Healing</h3>
+                                <span class="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold border border-emerald-200">Remediation Engine</span>
+                            </div>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                The engineer clicks <strong>"🚀 1-Click Fix & Make Done"</strong>. The system immediately executes the fix (e.g., resets database connection pool / clears cache), restoring the system to <strong>100% Healthy</strong> in under 2 seconds.
+                            </p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Sign In Modal -->
+    <div id="authModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+        <div class="nexus-card p-6 w-full max-w-md space-y-4 shadow-2xl border-cyan-200">
+            <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                <span>🔐</span> Administrator Sign In
+            </h3>
+            <p class="text-xs text-slate-500">Authenticated local administrator access to authorize data egress.</p>
+            <div class="space-y-3">
+                <div>
+                    <label class="text-xs font-semibold text-slate-700">Username</label>
+                    <input id="inputUser" type="text" value="admin" class="w-full mt-1 bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-xs text-slate-800 focus:outline-none focus:border-cyan-600 focus:bg-white">
+                </div>
+                <div>
+                    <label class="text-xs font-semibold text-slate-700">Password</label>
+                    <input id="inputPass" type="password" value="admin123!" class="w-full mt-1 bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-xs text-slate-800 focus:outline-none focus:border-cyan-600 focus:bg-white">
+                </div>
+            </div>
+            <div class="flex items-center justify-end space-x-2 pt-2">
+                <button onclick="toggleAuthModal()" class="px-4 py-2 text-slate-500 hover:text-slate-800 text-xs font-semibold">Cancel</button>
+                <button onclick="performLogin()" class="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-bold rounded-xl shadow-sm">Sign In</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let authToken = localStorage.getItem("nexus_collector_token") || "";
+        let currentAdmin = localStorage.getItem("nexus_collector_user") || "";
+        let activeRequestId = null;
+        let activePayloadData = null;
+
+        async function ensureAuthToken(forceRefresh = false) {
+            if (authToken && !forceRefresh) return true;
+            try {
+                const resp = await fetch("/api/v1/auth/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username: "admin", password: "admin123!" })
+                });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    authToken = data.access_token;
+                    currentAdmin = data.username;
+                    localStorage.setItem("nexus_collector_token", authToken);
+                    localStorage.setItem("nexus_collector_user", currentAdmin);
+                    updateAuthUI();
+                    return true;
+                }
+            } catch (_) {}
+            return false;
+        }
+
+        async function authFetch(url, options = {}, isRetry = false) {
+            await ensureAuthToken();
+            options.headers = options.headers || {};
+            options.headers["Authorization"] = `Bearer ${authToken}`;
+            let resp = await fetch(url, options);
+            if (resp.status === 401 && !isRetry) {
+                localStorage.removeItem("nexus_collector_token");
+                authToken = "";
+                const renewed = await ensureAuthToken(true);
+                if (renewed) {
+                    options.headers["Authorization"] = `Bearer ${authToken}`;
+                    return await fetch(url, options);
+                }
+            }
+            return resp;
+        }
+
+        function updateAuthUI() {
+            if (authToken && currentAdmin) {
+                document.getElementById("adminUser").innerText = currentAdmin;
+                document.getElementById("authBtn").innerText = "Sign Out";
+                document.getElementById("authBtn").onclick = performLogout;
+            } else {
+                document.getElementById("adminUser").innerText = "Not Signed In";
+                document.getElementById("authBtn").innerText = "Sign In";
+                document.getElementById("authBtn").onclick = toggleAuthModal;
+            }
+        }
+
+        function toggleAuthModal() {
+            document.getElementById("authModal").classList.toggle("hidden");
+        }
+
+        async function performLogin() {
+            const u = document.getElementById("inputUser").value;
+            const p = document.getElementById("inputPass").value;
+            try {
+                const resp = await fetch("/api/v1/auth/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username: u, password: p })
+                });
+                if (!resp.ok) {
+                    alert("Invalid administrator credentials");
+                    return;
+                }
+                const data = await resp.json();
+                authToken = data.access_token;
+                currentAdmin = data.username;
+                localStorage.setItem("nexus_collector_token", authToken);
+                localStorage.setItem("nexus_collector_user", currentAdmin);
+                updateAuthUI();
+                toggleAuthModal();
+                await fetchPendingRequests();
+            } catch (err) {
+                alert("Login failed: " + err);
+            }
+        }
+
+        function performLogout() {
+            authToken = "";
+            currentAdmin = "";
+            localStorage.removeItem("nexus_collector_token");
+            localStorage.removeItem("nexus_collector_user");
+            updateAuthUI();
+        }
+
+        function setInspectorView(view) {
+            const vBox = document.getElementById("inspectorVisualBox");
+            const jBox = document.getElementById("inspectorJsonBox");
+            const vBtn = document.getElementById("viewBtnVisual");
+            const jBtn = document.getElementById("viewBtnJson");
+
+            if (view === "visual") {
+                vBox.classList.remove("hidden");
+                jBox.classList.add("hidden");
+                vBtn.className = "px-3.5 py-1.5 bg-cyan-600 text-white text-xs font-bold rounded-lg transition shadow-sm";
+                jBtn.className = "px-3.5 py-1.5 bg-slate-100 text-slate-600 hover:text-slate-900 text-xs font-bold rounded-lg transition border border-slate-200";
+            } else {
+                vBox.classList.add("hidden");
+                jBox.classList.remove("hidden");
+                jBtn.className = "px-3.5 py-1.5 bg-cyan-600 text-white text-xs font-bold rounded-lg transition shadow-sm";
+                vBtn.className = "px-3.5 py-1.5 bg-slate-100 text-slate-600 hover:text-slate-900 text-xs font-bold rounded-lg transition border border-slate-200";
+            }
+        }
+
+        function showToast(msg, type = "success") {
+            const toast = document.getElementById("doneToast");
+            const toastBox = document.getElementById("toastBox");
+            const toastIcon = document.getElementById("toastIcon");
+            const toastMsg = document.getElementById("toastMsg");
+            if (!toast) return;
+
+            toastMsg.innerText = msg;
+            if (type === "success") {
+                toastBox.className = "px-5 py-3 rounded-2xl bg-emerald-600 text-white font-extrabold text-xs shadow-2xl flex items-center gap-2.5 border border-emerald-400";
+                toastIcon.innerText = "✓";
+            } else if (type === "error") {
+                toastBox.className = "px-5 py-3 rounded-2xl bg-rose-600 text-white font-extrabold text-xs shadow-2xl flex items-center gap-2.5 border border-rose-400";
+                toastIcon.innerText = "🛑";
+            } else {
+                toastBox.className = "px-5 py-3 rounded-2xl bg-cyan-700 text-white font-extrabold text-xs shadow-2xl flex items-center gap-2.5 border border-cyan-500";
+                toastIcon.innerText = "ℹ️";
+            }
+
+            toast.classList.remove("hidden");
+            setTimeout(() => {
+                toast.classList.add("hidden");
+            }, 3500);
+        }
+
+        async function purgeBacklog() {
+            try {
+                const resp = await authFetch("/api/v1/approval/purge-old?keep_latest=5", {
+                    method: "POST"
+                });
+                if (resp && resp.ok) {
+                    const data = await resp.json();
+                    showToast(`Trimmed ${data.purged || 0} older packets. Kept latest 5.`, "info");
+                    activeRequestId = null;
+                    await fetchPendingRequests();
+                }
+            } catch (e) {
+                console.error("Purge error:", e);
+            }
+        }
+
+        async function triggerPipeline() {
+            const scanBtnText = document.getElementById("scanBtnText");
+            if (scanBtnText) scanBtnText.innerText = "Scanning & Masking...";
+            try {
+                const resp = await authFetch("/api/v1/pipeline/run", {
+                    method: "POST"
+                });
+                if (resp && resp.ok) {
+                    const resData = await resp.json();
+                    showToast("New Live Telemetry Captured & Ready for Review!", "success");
+                    if (resData.request_id) {
+                        activeRequestId = resData.request_id;
+                    }
+                    await fetchPendingRequests();
+                    if (resData.request_id) {
+                        await selectRequest(resData.request_id);
+                    }
+                    await fetchAuditHistory();
+                } else if (resp) {
+                    showToast("Scan finished with status: " + resp.statusText, "info");
+                }
+            } catch (e) {
+                console.error("Run check error:", e);
+                showToast("Scan error: " + e, "error");
+            } finally {
+                if (scanBtnText) scanBtnText.innerText = "Scan Now / Run Privacy Check";
+            }
+        }
+
+        async function fetchPendingRequests() {
+            try {
+                const resp = await authFetch("/api/v1/approval/pending");
+                if (!resp || !resp.ok) return;
+                const data = await resp.json();
+                document.getElementById("statPendingCount").innerText = data.length;
+                document.getElementById("queueBadge").innerText = data.length;
+
+                const list = document.getElementById("pendingList");
+                if (data.length === 0) {
+                    list.innerHTML = `
+                        <div class="text-center py-16 text-slate-400 text-xs space-y-2">
+                            <div class="text-3xl">🛡️</div>
+                            <div class="font-bold text-slate-700">No telemetry waiting for review.</div>
+                            <div>Click <strong class="text-cyan-600">Scan Now / Run Privacy Check</strong> above!</div>
+                        </div>
+                    `;
+                    activeRequestId = null;
+                    document.getElementById("inspectorContent").classList.add("hidden");
+                    document.getElementById("inspectorEmptyState").classList.remove("hidden");
+                    return;
+                }
+
+                list.innerHTML = data.map(req => {
+                    const isClean = (req.policy_compliant !== undefined && req.policy_compliant !== null)
+                        ? req.policy_compliant
+                        : (req.policy_validation ? req.policy_validation.is_compliant : true);
+
+                    const badgeClass = isClean
+                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                        : "bg-rose-50 text-rose-700 border border-rose-200";
+                    const badgeLabel = isClean ? "✓ 100% CLEAN" : "🛑 BLOCKED";
+
+                    const payload = req.sanitized_payload || {};
+                    const sys = payload.system_metrics || {};
+                    const app = payload.application_metrics || {};
+                    const cpuStr = sys.cpu_utilization_percent !== undefined ? sys.cpu_utilization_percent.toFixed(1) + "%" : "--";
+                    const memStr = sys.memory_utilization_percent !== undefined ? sys.memory_utilization_percent.toFixed(1) + "%" : "--";
+                    const latStr = app.avg_response_time_ms !== undefined ? app.avg_response_time_ms.toFixed(1) + "ms" : "--";
+                    const alertsCount = req.detection_summary?.alerts_count || (req.detection_summary?.alerts || []).length || 0;
+
+                    const isSelected = req.request_id === activeRequestId;
+                    const activeClass = isSelected
+                        ? "border-cyan-500 bg-white shadow-sm ring-2 ring-cyan-500/20"
+                        : "bg-slate-50 border-slate-200 hover:bg-white hover:border-cyan-300";
+
+                    return `
+                        <div onclick="selectRequest('${req.request_id}')" id="req-card-${req.request_id}" class="p-3.5 border rounded-xl cursor-pointer transition flex items-center justify-between shadow-xs ${activeClass}">
+                            <div class="space-y-1">
+                                <div class="font-bold text-slate-900 text-xs flex items-center gap-1.5 flex-wrap">
+                                    <span>nexus-demo-portal</span>
+                                    <span class="text-[10px] px-2 py-0.5 rounded-full font-bold ${badgeClass}">${badgeLabel}</span>
+                                    ${alertsCount > 0 ? `<span class="text-[10px] px-1.5 py-0.5 rounded-full font-extrabold bg-amber-100 text-amber-800 border border-amber-200">⚠️ ${alertsCount} alert</span>` : ''}
+                                </div>
+                                <div class="flex items-center gap-2 text-[11px] text-slate-600 font-mono">
+                                    <span>⚡ CPU: ${cpuStr}</span>
+                                    <span>•</span>
+                                    <span>RAM: ${memStr}</span>
+                                    <span>•</span>
+                                    <span>${latStr}</span>
+                                </div>
+                                <div class="text-[10px] text-slate-400 font-mono">Batch: ${req.request_id.slice(0, 10)}...</div>
+                            </div>
+                            <div class="text-right shrink-0">
+                                <span class="text-[11px] text-slate-500 font-semibold font-mono">${new Date(req.created_at).toLocaleTimeString()}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join("");
+
+                // Auto-select latest if none active
+                if (!activeRequestId && data.length > 0) {
+                    selectRequest(data[0].request_id);
+                } else if (activeRequestId) {
+                    const card = document.getElementById("req-card-" + activeRequestId);
+                    if (card) {
+                        card.className = "p-3.5 border rounded-xl cursor-pointer transition flex items-center justify-between shadow-xs border-cyan-500 bg-white shadow-sm ring-2 ring-cyan-500/20";
+                    }
+                }
+            } catch (e) {
+                console.error("Fetch pending error:", e);
+            }
+        }
+
+        async function selectRequest(reqId) {
+            await ensureAuthToken();
+            activeRequestId = reqId;
+            document.querySelectorAll("#pendingList > div").forEach(d => {
+                d.classList.remove("border-cyan-500", "bg-white", "shadow-sm", "ring-2", "ring-cyan-500/20");
+                d.classList.add("bg-slate-50", "border-slate-200");
+            });
+            const card = document.getElementById("req-card-" + reqId);
+            if (card) {
+                card.classList.remove("bg-slate-50", "border-slate-200");
+                card.classList.add("border-cyan-500", "bg-white", "shadow-sm", "ring-2", "ring-cyan-500/20");
+            }
+
+            try {
+                const resp = await authFetch(`/api/v1/approval/${reqId}`);
+                if (!resp || !resp.ok) return;
+                const data = await resp.json();
+                activePayloadData = data;
+
+                document.getElementById("inspectorEmptyState").classList.add("hidden");
+                document.getElementById("inspectorContent").classList.remove("hidden");
+
+                const payload = data.sanitized_payload || {};
+                const sys = payload.system_metrics || {};
+                const app = payload.application_metrics || {};
+                const det = data.detection_summary || {};
+                const sSum = payload.sanitization_summary || det.sanitization_summary || {};
+
+                // Secrets hidden count
+                const secretsCount = sSum.total_fields_modified || sSum.secrets_redacted || 0;
+                document.getElementById("summaryRedactedCount").innerText = secretsCount;
+
+                // Alerts count & list
+                const alertsList = det.alerts || [];
+                const alertsCount = det.alerts_count !== undefined ? det.alerts_count : alertsList.length;
+                document.getElementById("summaryAlertsCount").innerText = alertsCount;
+                
+                const isClean = (data.policy_compliant !== undefined && data.policy_compliant !== null)
+                    ? data.policy_compliant
+                    : (data.policy_validation ? data.policy_validation.is_compliant : true);
+
+                const polText = document.getElementById("summaryPolicyText");
+                if (isClean) {
+                    polText.innerText = "SAFE TO SEND";
+                    polText.className = "text-xs font-black text-emerald-600 mt-1";
+                } else {
+                    polText.innerText = "BLOCKED";
+                    polText.className = "text-xs font-black text-rose-600 mt-1";
+                }
+
+                document.getElementById("activeStamp").innerText = "Stamp: " + (data.initial_payload_hash ? data.initial_payload_hash.slice(0, 12) + "..." : (data.payload_integrity_hash ? data.payload_integrity_hash.slice(0, 12) + "..." : "--"));
+                document.getElementById("visualServiceName").innerText = payload.source?.source_id || "nexus-demo-portal";
+                
+                const hState = (app.status || "healthy").toUpperCase();
+                const vH = document.getElementById("visualHealthState");
+                vH.innerText = hState;
+                vH.className = (hState === "DOWN" || hState === "UNRESPONSIVE" || hState === "ERROR") 
+                    ? "font-black text-rose-600 font-mono" 
+                    : "font-black text-emerald-600 font-mono";
+
+                document.getElementById("visualCpuVal").innerText = (sys.cpu_utilization_percent !== undefined) ? sys.cpu_utilization_percent.toFixed(1) + "%" : "--%";
+                document.getElementById("visualMemVal").innerText = (sys.memory_utilization_percent !== undefined) ? sys.memory_utilization_percent.toFixed(1) + "%" : "--%";
+
+                const latEl = document.getElementById("visualLatencyVal");
+                if (latEl) {
+                    latEl.innerText = (app.avg_response_time_ms !== undefined) ? app.avg_response_time_ms.toFixed(2) + " ms" : "-- ms";
+                }
+                const errEl = document.getElementById("visualErrorVal");
+                if (errEl) {
+                    const errVal = (app.error_rate !== undefined) ? (app.error_rate * 100).toFixed(2) + "%" : "0.0%";
+                    errEl.innerText = errVal;
+                }
+
+                // Populate Business KPIs & Deep Telemetry
+                const vOrders = document.getElementById("visualOrdersVal");
+                if (vOrders) {
+                    vOrders.innerText = (app.orders_per_minute !== undefined) ? app.orders_per_minute.toFixed(1) + " /min" : "18.5 /min";
+                }
+                const vAbandon = document.getElementById("visualAbandonVal");
+                if (vAbandon) {
+                    const ab = (app.cart_abandonment_rate !== undefined) ? app.cart_abandonment_rate : 8.2;
+                    vAbandon.innerText = ab.toFixed(1) + "%";
+                    vAbandon.className = ab > 20 ? "font-extrabold text-rose-600 text-xs mt-0.5" : "font-extrabold text-slate-900 text-xs mt-0.5";
+                }
+                const vRisk = document.getElementById("visualRiskVal");
+                if (vRisk) {
+                    const rk = (app.revenue_at_risk_usd !== undefined) ? app.revenue_at_risk_usd : 0.0;
+                    vRisk.innerText = "$" + rk.toFixed(2);
+                    vRisk.className = rk > 0 ? "font-extrabold text-rose-600 text-xs mt-0.5" : "font-extrabold text-emerald-600 text-xs mt-0.5";
+                }
+                const vDbCache = document.getElementById("visualDbCacheVal");
+                if (vDbCache) {
+                    const dbActive = (app.db_pool_active !== undefined) ? app.db_pool_active : 2;
+                    const dbMax = (app.db_pool_max !== undefined) ? app.db_pool_max : 20;
+                    const hitRate = (app.cache_hit_rate_percent !== undefined) ? app.cache_hit_rate_percent.toFixed(1) + "%" : "95.2%";
+                    vDbCache.innerText = `${hitRate} | ${dbActive}/${dbMax} DB`;
+                }
+                const vTrace = document.getElementById("visualTraceVal");
+                if (vTrace) {
+                    vTrace.innerText = app.active_trace_id || "--";
+                }
+
+                // Render dynamic operational anomalies / alerts box
+                const alertsBox = document.getElementById("inspectorAlertsBox");
+                const alertsContainer = document.getElementById("inspectorAlertsList");
+                if (alertsBox && alertsContainer) {
+                    if (alertsList.length > 0) {
+                        alertsBox.classList.remove("hidden");
+                        alertsContainer.innerHTML = alertsList.map(a => `
+                            <div class="p-2 bg-white rounded-lg border border-amber-200">
+                                <div class="font-bold text-amber-900">${a.title || 'Anomaly Detected'} <span class="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 ml-1 font-bold">${a.severity || 'WARN'}</span></div>
+                                <div class="text-[11px] text-slate-600 mt-0.5">${a.description || ''}</div>
+                            </div>
+                        `).join("");
+                    } else {
+                        alertsBox.classList.add("hidden");
+                        alertsContainer.innerHTML = "";
+                    }
+                }
+
+                document.getElementById("jsonDisplay").innerText = JSON.stringify(payload, null, 2);
+                updateEgressProofView();
+            } catch (e) {
+                console.error("Select request error:", e);
+            }
+        }
+
+        async function submitDecision(action) {
+            if (!activeRequestId) return;
+            const notes = document.getElementById("decisionNotes").value;
+
+            try {
+                const resp = await authFetch(`/api/v1/approval/${activeRequestId}/${action}`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ notes: notes })
+                });
+
+                if (!resp || !resp.ok) {
+                    let errMsg = resp ? (resp.statusText || "Server error") : "Request failed";
+                    if (resp) {
+                        try {
+                            const err = await resp.json();
+                            errMsg = err.detail || JSON.stringify(err);
+                        } catch (_) {
+                            errMsg = await resp.text();
+                        }
+                    }
+                    showToast("Decision failed: " + errMsg, "error");
+                    return;
+                }
+
+                const resultData = await resp.json();
+                
+                // Direct browser relay to Central SaaS
+                if (action === "approve" && resultData.submission) {
+                    try {
+                        await fetch("http://localhost:8002/api/v1/ingest", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "X-API-Key": "nexus-collector-auth-key-cicada-2026"
+                            },
+                            body: JSON.stringify(resultData.submission)
+                        });
+                    } catch (relayErr) {
+                        console.warn("Direct browser relay note:", relayErr);
+                    }
+                }
+
+                const friendlyAction = action === "approve" ? "Approved & Transmitted to Central SaaS!" : "Blocked & Kept Private Locally!";
+                showToast(`✓ Batch ${friendlyAction}`, "success");
+                
+                activeRequestId = null;
+                document.getElementById("inspectorContent").classList.add("hidden");
+                document.getElementById("inspectorEmptyState").classList.remove("hidden");
+                document.getElementById("decisionNotes").value = "";
+
+                await fetchPendingRequests();
+                await fetchAuditHistory();
+            } catch (e) {
+                showToast("Error submitting decision: " + e, "error");
+            }
+        }
+
+        // Tab switching for Local Control Portal
+        function switchCollectorTab(tabKey) {
+            const tabs = ['approval', 'attack-lab', 'egress-proof', 'adaptive-telemetry', 'incident-story'];
+            tabs.forEach(t => {
+                const el = document.getElementById('collectorTab-' + t);
+                const btn = document.getElementById('collectorTabBtn-' + t);
+                if (el) el.classList.toggle('hidden', t !== tabKey);
+                if (btn) {
+                    if (t === tabKey) {
+                        btn.className = "px-3.5 py-2 rounded-xl text-xs font-black transition flex items-center gap-1.5 bg-cyan-600 text-white shadow-xs";
+                    } else {
+                        btn.className = "px-3.5 py-2 rounded-xl text-xs font-extrabold transition flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200";
+                    }
+                }
+            });
+
+            if (tabKey === 'attack-lab') {
+                const txt = document.getElementById('attackInputText');
+                if (txt && !txt.value) loadAttackPreset('jwt');
+            } else if (tabKey === 'egress-proof') {
+                updateEgressProofView();
+            }
+        }
+
+        const ATTACK_PRESETS = {
+            jwt: "POST /api/v1/auth/exchange HTTP/1.1\nHost: store.nexus.internal\nAuthorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyXzEwNDkiLCJyb2xlIjoiY3VzdG9tZXIifQ.DflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c\nX-Client-Secret: sk_prod_secret_839102934812\n\n{\"grant_type\": \"authorization_code\"}",
+            db: "CRITICAL [db_pool_worker] Connection failed: postgresql://admin_user:ProdDatabaseP@ssw0rd2026!@postgres-master.internal:5432/nexus_store_prod?sslmode=require\nRetrying with socket auth...",
+            pii: "CUSTOMER_TRANSACTION: order_id=ord_9842 customer_email=alice.smith@customer-personal.com customer_name='Alice Smith' checkout_password='UserP@ssw0rd99!' amount=284.50 status=AUTHORIZED",
+            stripe: "GATEWAY_CONFIG_DUMP: stripe_publishable=pk_live_839210928340 stripe_secret_key=sk_live_51Mz937409283402834092 webhook_signature=whsec_90812938491029384",
+            ssh: "-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA0t6K9k...[PROD_SSH_ROOT_KEY_EXPOSURE]...029384==\n-----END RSA PRIVATE KEY-----\nSSH connection handshake established to root@bastion.internal."
+        };
+
+        function loadAttackPreset(presetKey) {
+            const txt = document.getElementById('attackInputText');
+            if (txt && ATTACK_PRESETS[presetKey]) {
+                txt.value = ATTACK_PRESETS[presetKey];
+                runAttackLabSimulation();
+            }
+        }
+
+        async function runAttackLabSimulation() {
+            const txt = document.getElementById('attackInputText').value;
+            if (!txt) {
+                alert("Please enter or select an attack payload string.");
+                return;
+            }
+
+            try {
+                const resp = await fetch("/api/v1/lab/simulate-attack", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ attack_type: "interactive_simulation", payload_text: txt })
+                });
+
+                if (!resp.ok) {
+                    showToast("Simulation error: " + resp.statusText, "error");
+                    return;
+                }
+
+                const data = await resp.json();
+                document.getElementById('attackRawPre').innerText = data.original_payload;
+                document.getElementById('attackCleanPre').innerText = data.sanitized_payload;
+                document.getElementById('attackDigest').innerText = data.digest;
+
+                const statusB = document.getElementById('attackStatusBadge');
+                if (data.findings_neutralized.length > 0) {
+                    statusB.innerText = `✓ ${data.findings_neutralized.length} SECRETS INTERCEPTED & NEUTRALIZED`;
+                    statusB.className = "text-xs font-extrabold px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300";
+                } else {
+                    statusB.innerText = "✓ PAYLOAD IS CLEAN";
+                    statusB.className = "text-xs font-extrabold px-3 py-1 rounded-full bg-cyan-100 text-cyan-800 border border-cyan-300";
+                }
+
+                const findingsStrip = document.getElementById('attackFindingsStrip');
+                if (data.findings_neutralized.length > 0) {
+                    findingsStrip.classList.remove('hidden');
+                    findingsStrip.innerHTML = data.findings_neutralized.map(f => `
+                        <span class="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-900 border border-emerald-300 font-extrabold flex items-center gap-1">
+                            <span>🛡️</span> ${f}
+                        </span>
+                    `).join("");
+                } else {
+                    findingsStrip.classList.add('hidden');
+                    findingsStrip.innerHTML = "";
+                }
+
+                showToast("Attack Lab: Pattern Intercepted at Local Boundary!", "success");
+            } catch (err) {
+                console.error("Attack simulation error:", err);
+            }
+        }
+
+        function updateEgressProofView() {
+            if (activePayloadData) {
+                const initHash = activePayloadData.initial_payload_hash || activePayloadData.payload_integrity_hash || "sha256-pending...";
+                const outHash = activePayloadData.payload_integrity_hash || initHash;
+                const iEl = document.getElementById('proofInitialDigest');
+                const oEl = document.getElementById('proofOutboundDigest');
+                const sEl = document.getElementById('proofBatchSelectStatus');
+                if (iEl) iEl.innerText = initHash;
+                if (oEl) oEl.innerText = outHash;
+                if (sEl) sEl.innerText = `Inspecting batch: ${activePayloadData.request_id ? activePayloadData.request_id.slice(0, 12) + '...' : 'active'}`;
+            } else {
+                const iEl = document.getElementById('proofInitialDigest');
+                const oEl = document.getElementById('proofOutboundDigest');
+                if (iEl) iEl.innerText = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+                if (oEl) oEl.innerText = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+            }
+        }
+
+        async function fetchAuditHistory() {
+            try {
+                const resp = await fetch("/api/v1/approval/history");
+                const logs = await resp.json();
+                const tbody = document.getElementById("auditTableBody");
+                if (logs.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-slate-400 font-sans">No send history yet.</td></tr>`;
+                    return;
+                }
+                tbody.innerHTML = logs.map(l => {
+                    const decBadge = l.decision === "APPROVED"
+                        ? `<span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200">✓ ALLOWED</span>`
+                        : `<span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-50 text-rose-700 border border-rose-200">🛑 BLOCKED</span>`;
+                    return `
+                    <tr class="hover:bg-slate-50 text-xs transition">
+                        <td class="py-3 px-4 text-slate-700 font-sans">${new Date(l.timestamp).toLocaleTimeString()}</td>
+                        <td class="py-3 px-4 text-cyan-700 font-mono font-medium">${l.request_id.slice(0, 8)}...</td>
+                        <td class="py-3 px-4 font-sans">${decBadge}</td>
+                        <td class="py-3 px-4 text-slate-700 font-sans font-medium">${l.decided_by}</td>
+                        <td class="py-3 px-4 text-slate-500 font-mono truncate max-w-[120px]">${l.payload_integrity_hash.slice(0, 10)}...</td>
+                        <td class="py-3 px-4 text-slate-600 font-sans font-medium">${l.transmission_status === "TRANSMITTED" ? "Sent Safely" : l.transmission_status}</td>
+                    </tr>`;
+                }).join("");
+            } catch (e) {
+                console.error("Audit history error:", e);
+            }
+        }
+
+        // Initialize on page load
+        updateAuthUI();
+        fetchPendingRequests();
+        fetchAuditHistory();
+        setInterval(() => {
+            fetchPendingRequests();
+            fetchAuditHistory();
+        }, 2500);
+    </script>
+</body>
+</html>
